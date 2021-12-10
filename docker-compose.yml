@@ -1,0 +1,77 @@
+version: '3'
+
+services:
+  # Database
+  db:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    networks:
+      - wpsite
+  # phpmyadmin
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: password 
+    networks:
+      - wpsite
+  # Wordpress
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    ports:
+      - '8000:80'
+    restart: always
+    volumes: 
+      - ./wordpress:/var/www/html
+      - ./upload.ini:/usr/local/etc/php/conf.d/uploads.ini
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    networks:
+      - wpsite
+  # Wordpress CLI
+  wordpress-cli:
+    depends_on:
+      - db
+      - wordpress
+    image: wordpress:cli
+    user: xfs
+    command: >
+      /bin/sh -c '
+      sleep 10;
+      wp core install --url=http://localhost:8000 --title="Sandbox" --admin_user=admin --admin_password="v5nvdqwat89w1ayg" --admin_email=codedbychavez@gmail.com &&
+      wp theme install astra --force --activate &&
+      wp plugin install https://downloads.wordpress.org/plugin/elementor.3.4.8.zip --force --activate &&
+      wp plugin install https://github.com/codedbychavez/wordpress-dev-plugins/raw/main/elementor-pro.zip --force --activate &&
+      wp plugin install https://downloads.wordpress.org/plugin/wordpress-seo.17.7.1.zip --force --activate &&
+      wp plugin install https://downloads.wordpress.org/plugin/astra-sites.2.7.5.zip --force --activate &&
+      wp plugin install https://downloads.wordpress.org/plugin/wpforms-lite.1.7.1.2.zip --force --activate &&
+      wp plugin install https://downloads.wordpress.org/plugin/all-in-one-wp-migration.7.50.zip --force --activate
+      '
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - ./wordpress:/var/www/html
+    networks:
+      - wpsite
+networks:
+  wpsite:
+volumes:
+  db_data:
